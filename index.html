@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>혈당 스파이크에~서 누가 돌아왔~게</title>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>
+        window.MathJax = { tex: { inlineMath: [['$', '$']] } };
+    </script>
+    <style>
+        body {
+            font-family: 'Jua', sans-serif;
+            background-color: #ffe6eb;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        #game-container {
+            background-color: white;
+            width: 900px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            padding: 20px;
+            text-align: center;
+            position: relative;
+            overflow-y: auto;
+            min-height: 650px;
+            max-height: 90vh;
+        }
+        
+        h1 { font-size: 40px; color: #ff8fab; margin-bottom: 20px; margin-top: 20px; text-shadow: 2px 2px 0px #ffe6eb; }
+
+        .screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: #fff0f3;
+            display: none;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            z-index: 10;
+            padding-top: 30px;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+
+        .active-screen { display: flex; }
+
+        .btn {
+            font-family: 'Jua', sans-serif; font-size: 24px; padding: 15px 40px; margin: 10px;
+            border: none; border-radius: 30px; cursor: pointer; transition: 0.3s;
+            box-shadow: 0 5px 0 rgba(0,0,0,0.1); position: relative; z-index: 20;
+        }
+        .btn-primary { background-color: #ff8fab; color: white; }
+        .btn-primary:hover:not(:disabled) { background-color: #ff7597; transform: translateY(2px); box-shadow: 0 3px 0 rgba(0,0,0,0.1); }
+        .btn-primary:disabled { background-color: #ccc; cursor: not-allowed; box-shadow: none; transform: none; opacity: 0.7; }
+
+        .btn-secondary { background-color: #4fc3f7; color: white; box-shadow: 0 5px 0 #0288d1; }
+        .btn-secondary:hover { background-color: #29b6f6; transform: translateY(2px); box-shadow: 0 3px 0 #0288d1; }
+
+        .btn-retry { background-color: #ff9800; color: white; box-shadow: 0 5px 0 #e65100; }
+        .btn-retry:hover { background-color: #f57c00; box-shadow: 0 3px 0 #e65100; }
+
+        .btn-topright {
+            position: absolute; top: 20px; right: 20px; font-size: 18px; padding: 10px 20px;
+            background-color: #ffd166; color: #d35400; border: none; border-radius: 20px;
+            cursor: pointer; box-shadow: 0 4px 0 #f4a261; font-family: 'Jua', sans-serif; z-index: 30;
+        }
+        .btn-topright:active { transform: translateY(3px); box-shadow: none; }
+
+        /* 진열대 CSS */
+        #shop-shelf {
+            width: 85%; background-color: #fffafb; border: 4px solid #ffb3c6; border-radius: 15px;
+            padding: 20px 10px 10px 10px; display: flex; flex-direction: column; gap: 25px; margin-bottom: 20px;
+        }
+        .shelf-row {
+            display: flex; justify-content: center; flex-wrap: wrap; gap: 15px; align-items: center;
+            border-bottom: 6px solid #eebbcc; padding-bottom: 10px; position: relative;
+        }
+        .shelf-row:last-child { border-bottom: none; }
+        .shelf-label {
+            position: absolute; left: 10px; top: -25px; background: #ff8fab; color: white;
+            padding: 5px 15px; border-radius: 15px; font-size: 16px;
+        }
+        .topping-item {
+            font-size: 22px; white-space: nowrap; cursor: pointer; padding: 8px 12px;
+            border-radius: 15px; transition: 0.2s; filter: grayscale(100%) opacity(60%); border: 2px solid transparent;
+        }
+        .topping-item.selected {
+            filter: grayscale(0%) opacity(100%); transform: scale(1.1); background-color: #ffe6eb; border: 2px solid #ff8fab;
+        }
+
+        /* 퀴즈 박스 */
+        #quiz-box { width: 85%; background-color: white; border-radius: 15px; padding: 30px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); margin-top: 20px; }
+        #question-text { font-size: 26px; margin-bottom: 30px; min-height: 80px; display: flex; align-items: center; justify-content: center; line-height: 1.5; }
+        .quiz-btn {
+            font-family: 'Jua', sans-serif; font-size: 20px; padding: 15px 25px; margin: 10px;
+            border: none; border-radius: 15px; background-color: #ffc2d1; color: white;
+            cursor: pointer; box-shadow: 0 5px 0 #ff9eaa; min-width: 120px;
+        }
+        .quiz-btn:active { transform: translateY(5px); box-shadow: none; }
+        #progress-text { font-size: 22px; color: #ff8fab; margin-bottom: 5px; margin-top: 20px; }
+
+        /* 요아정 아트 */
+        #yoajung-art { position: relative; width: 300px; height: 300px; margin: 20px auto; transition: transform 0.3s; }
+        .swirl-base { position: absolute; bottom: 70px; left: 50px; width: 200px; height: 80px; background: #fff; border-radius: 100px; box-shadow: inset -8px -10px 15px rgba(0,0,0,0.05); z-index: 2; }
+        .swirl-mid { position: absolute; bottom: 120px; left: 70px; width: 160px; height: 70px; background: #fff; border-radius: 80px; box-shadow: inset -8px -10px 15px rgba(0,0,0,0.05); z-index: 3; }
+        .swirl-top { position: absolute; bottom: 165px; left: 100px; width: 100px; height: 60px; background: #fff; border-radius: 50px; box-shadow: inset -6px -8px 10px rgba(0,0,0,0.05); z-index: 4; }
+        .bowl {
+            position: absolute; bottom: 10px; left: 40px; width: 220px; height: 90px;
+            background: linear-gradient(to right, #f4f4f4, #ffffff, #eaeaea); border-radius: 10px 10px 110px 110px;
+            border-top: 6px solid #e0e0e0; box-shadow: 0 10px 20px rgba(0,0,0,0.15); z-index: 10;
+        }
+        
+        /* 토핑 & 시럽 애니메이션 */
+        .topping-drop { position: absolute; font-size: 32px; z-index: 15; opacity: 0; animation: dropIn 0.5s ease-out forwards; }
+        .syrup-blob { position: absolute; z-index: 5; opacity: 0; box-shadow: inset -5px -5px 15px rgba(0,0,0,0.15); animation: blobAppear 0.8s ease-out forwards; }
+        .syrup-drip { position: absolute; width: 12px; border-radius: 10px; z-index: 5; opacity: 0; transform-origin: top; box-shadow: inset -2px -2px 5px rgba(0,0,0,0.1); animation: dripAnim 1.2s ease-in-out forwards; }
+        @keyframes dropIn { 0% { transform: translateY(-50px) scale(0); opacity: 0; } 100% { transform: translateY(0) scale(1); opacity: 1; } }
+        @keyframes blobAppear { 0% { transform: scale(0.8) translateY(-10px); opacity: 0; } 100% { transform: scale(1) translateY(0); opacity: 0.9; } }
+        @keyframes dripAnim { 0% { height: 0px; opacity: 0; } 20% { opacity: 0.9; } 100% { height: var(--drip-h); opacity: 0.9; } }
+
+        /* 랭킹 화면 */
+        #ranking-list { list-style: none; padding: 0; width: 60%; margin: 0 auto; }
+        #ranking-list li { background: white; margin: 10px 0; padding: 15px; border-radius: 10px; font-size: 22px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); display: flex; justify-content: space-between; border-left: 5px solid #ff8fab; }
+
+        /* 큰 수의 법칙 시뮬레이션 UI */
+        #sim-chart-container { width: 85%; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: left; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+        .sim-row { display: flex; align-items: center; font-size: 18px; }
+        .sim-label { width: 120px; white-space: nowrap; }
+        .sim-bar-bg { flex-grow: 1; background-color: #f0f0f0; height: 16px; border-radius: 8px; overflow: hidden; margin: 0 10px; position: relative; }
+        .sim-bar-fill { background-color: #4fc3f7; height: 100%; width: 0%; transition: width 0.1s; }
+        .sim-percent { width: 50px; text-align: right; font-size: 16px; color: #666; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <!-- 1. 시작 화면 -->
+    <div id="screen-start" class="screen active-screen">
+        <button class="btn-topright" onclick="goToLeaderboard()">🏆 최고기록 보기</button>
+        <h1 style="margin-top: 60px;">혈당 스파이크에~서<br>누가 돌아왔~게 🍦</h1>
+        
+        <div style="margin-top: 20px; padding: 20px; border: 2px dashed #ff8fab; border-radius: 15px; width: 80%;">
+            <p style="font-size:22px; color:#d81b60; margin: 0 0 15px 0;">✨ 직접 토핑 고르기 ✨</p>
+            <button class="btn btn-primary" onclick="goToShop('small')">1인용</button>
+            <button class="btn btn-primary" onclick="goToShop('large')">2~3인용</button>
+        </div>
+
+        <div style="margin-top: 20px; padding: 20px; border: 2px dashed #4fc3f7; border-radius: 15px; width: 80%; background-color: #f1fafd;">
+            <p style="font-size:22px; color:#0288d1; margin: 0 0 10px 0;">🎲 귀찮다면? 랜덤 알아서 담기 🎲</p>
+            <p style="font-size:16px; color:#666; margin: 0 0 15px 0;">큰 수의 법칙을 활용한 1000번의 완벽한 확률 시뮬레이션!</p>
+            <button class="btn btn-secondary" onclick="startSimulation()">랜덤 6개 뽑기 (1인용)</button>
+        </div>
+    </div>
+
+    <!-- 큰 수의 법칙 시뮬레이션 화면 -->
+    <div id="screen-simulation" class="screen">
+        <h1 style="margin-bottom: 5px;">📊 1000번의 시뮬레이션</h1>
+        <p style="font-size:18px; color:#666; margin-bottom: 20px;">
+            14개의 토핑이 각각 뽑힐 수학적 확률은 <b>약 7.14%</b>입니다.<br>
+            시행 횟수가 많아질수록 진짜 7.14%에 가까워지는지 확인해보세요!
+        </p>
+        <h2 id="sim-counter" style="color: #0288d1;">시행 횟수: 0 / 1000</h2>
+        
+        <div id="sim-chart-container">
+            <!-- 자바스크립트로 막대그래프 생성됨 -->
+        </div>
+
+        <div id="sim-result-area" style="display: none; margin-top: 20px;">
+            <p id="sim-final-text" style="font-size: 22px; color: #d81b60; font-weight: bold;"></p>
+            <button class="btn btn-primary" onclick="startQuizPhase()">이 토핑들로 퀴즈 풀기 ➔</button>
+        </div>
+    </div>
+
+    <!-- 리더보드 화면 -->
+    <div id="screen-leaderboard" class="screen">
+        <h1>🏆 명예의 전당 (순위표) 🏆</h1>
+        <p style="font-size: 18px; color: #666;">지금까지 내가 획득한 최고 토핑 개수 기록입니다.</p>
+        <ul id="ranking-list"></ul>
+        <button class="btn btn-primary" style="margin-top: 30px;" onclick="switchScreen('screen-start')">돌아가기</button>
+    </div>
+
+    <!-- 2. 토핑 선택 상점 (수동 모드) -->
+    <div id="screen-shop" class="screen">
+        <h1 style="margin-top: 10px; margin-bottom: 10px;">토핑 진열대</h1>
+        <p style="font-size:18px; color:#666; margin-bottom: 30px;">원하는 토핑을 최소 6개 이상 선택하세요. (토핑 1개당 2문제 추가)</p>
+        <div id="shop-shelf">
+            <!-- 기존 진열대 내용 -->
+            <div class="shelf-row" style="margin-top: 15px;">
+                <div class="shelf-label">3층: 시럽&코팅</div>
+                <div class="topping-item" data-id="choco_shell" data-tier="3" data-emoji="🍫" onclick="toggleTopping(this)">🍫 초코쉘</div>
+                <div class="topping-item" data-id="honey" data-tier="3" data-emoji="🍯" onclick="toggleTopping(this)">🍯 벌집꿀</div>
+                <div class="topping-item" data-id="milk" data-tier="3" data-emoji="🥛" onclick="toggleTopping(this)">🥛 연유</div>
+                <div class="topping-item" data-id="caramel" data-tier="3" data-emoji="🍮" onclick="toggleTopping(this)">🍮 카라멜</div>
+            </div>
+            <div class="shelf-row" style="margin-top: 15px;">
+                <div class="shelf-label">2층: 달콤 스낵</div>
+                <div class="topping-item" data-id="brownie" data-tier="2" data-emoji="🥮" onclick="toggleTopping(this)">🥮 브라우니</div>
+                <div class="topping-item" data-id="cheese" data-tier="2" data-emoji="🧀" onclick="toggleTopping(this)">🧀 치즈큐브</div>
+                <div class="topping-item" data-id="pop" data-tier="2" data-emoji="🍬" onclick="toggleTopping(this)">🍬 팝핑캔디</div>
+                <div class="topping-item" data-id="oreo" data-tier="2" data-emoji="🍩" onclick="toggleTopping(this)">🍩 오레오</div>
+            </div>
+            <div class="shelf-row" style="margin-top: 15px;">
+                <div class="shelf-label">1층: 신선 과일</div>
+                <div class="topping-item" data-id="strawberry" data-tier="1" data-emoji="🍓" onclick="toggleTopping(this)">🍓 딸기</div>
+                <div class="topping-item" data-id="banana" data-tier="1" data-emoji="🍌" onclick="toggleTopping(this)">🍌 바나나</div>
+                <div class="topping-item" data-id="mango" data-tier="1" data-emoji="🥭" onclick="toggleTopping(this)">🥭 망고</div>
+                <div class="topping-item" data-id="kiwi" data-tier="1" data-emoji="🥝" onclick="toggleTopping(this)">🥝 키위</div>
+                <div class="topping-item" data-id="grapefruit" data-tier="1" data-emoji="🍊" onclick="toggleTopping(this)">🍊 자몽</div>
+                <div class="topping-item" data-id="shine_muscat" data-tier="1" data-emoji="🍇" onclick="toggleTopping(this)">🍇 샤인머스캣</div>
+            </div>
+        </div>
+        <div style="margin-bottom: 20px; display: flex; align-items: center; justify-content: center;">
+            <span id="shop-counter" style="font-size:22px; font-weight:bold; margin-right:20px; color:#d81b60;">선택한 토핑: 0개</span>
+            <button id="btn-make" class="btn btn-primary" disabled onclick="startQuizPhase()">요아정 만들러 가기 ➔</button>
+        </div>
+    </div>
+
+    <!-- 3. 퀴즈 페이즈 -->
+    <div id="screen-quiz" class="screen">
+        <div id="progress-text">문제 1 / 12</div>
+        <div id="quiz-box">
+            <div id="question-text">문제가 로딩 중입니다...</div>
+            <div id="ox-buttons" style="display:none;">
+                <button class="quiz-btn" onclick="submitAnswer('O')">O (맞음)</button>
+                <button class="quiz-btn" onclick="submitAnswer('X')">X (틀림)</button>
+            </div>
+            <div id="abc-buttons" style="display:none;">
+                <button id="btn-a" class="quiz-btn" onclick="submitAnswer('A')">A</button>
+                <button id="btn-b" class="quiz-btn" onclick="submitAnswer('B')">B</button>
+                <button id="btn-c" class="quiz-btn" onclick="submitAnswer('C')">C</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. 결과 화면 -->
+    <div id="screen-result" class="screen">
+        <h1>🎉 주문하신 요아정 나왔습니다! 🎉</h1>
+        <p id="result-summary" style="font-size: 24px; margin-bottom: 10px;"></p>
+        
+        <div id="yoajung-art">
+            <div class="swirl-base"></div>
+            <div class="swirl-mid"></div>
+            <div class="swirl-top"></div>
+            <div id="syrup-layer" style="position: absolute; top:0; left:0; width:100%; height:100%; z-index:5;"></div>
+            <div class="bowl"></div>
+            <div id="topping-layer" style="position: absolute; top:0; left:0; width:100%; height:100%; z-index:15;"></div>
+        </div>
+
+        <div style="margin-top: 20px; display: flex; justify-content: center; gap: 20px;">
+            <button class="btn btn-primary" onclick="location.reload()">처음으로 돌아가기</button>
+            <button id="btn-retry" class="btn btn-retry" style="display: none;" onclick="startRetryPhase()">틀린 문제 다시 풀기</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 기존 문제 DB
+    const DB = {
+        algebra: {
+            1: [
+                { q: "지수법칙에 의해 $3^2 \\times 3^3 = 243$ 이다.", type: "ox", ans: "O" },
+                { q: "$\\log_2 8$ 의 값은?", type: "abc", ans: "B", opts: ["2", "3", "4"] }, 
+                { q: "삼각함수에서 $\\sin 30^\\circ$ 의 값은 $\\frac{1}{2}$ 이다.", type: "ox", ans: "O" },
+                { q: "첫째항이 2, 공차가 3인 등차수열의 제3항은?", type: "abc", ans: "B", opts: ["5", "8", "11"] },
+                { q: "첫째항이 1, 공비가 2인 등비수열에서 제4항은 8이다.", type: "ox", ans: "O" }
+            ],
+            2: [
+                { q: "로그의 성질에 의해 $\\log_3 9 + \\log_3 3$ 의 값은?", type: "abc", ans: "B", opts: ["2", "3", "4"] }, 
+                { q: "지수방정식 $2^x = 16$ 을 만족하는 $x$ 의 값은 4이다.", type: "ox", ans: "O" },
+                { q: "삼각함수에서 $\\cos 60^\\circ$ 의 값은?", type: "abc", ans: "A", opts: ["$\\frac{1}{2}$", "$\\frac{\\sqrt{2}}{2}$", "$\\frac{\\sqrt{3}}{2}$"] }, 
+                { q: "기호 $\\Sigma$ 를 사용한 수열의 합 $\\sum_{k=1}^{10} k$ 의 값은 55이다.", type: "ox", ans: "O" },
+                { q: "첫째항이 2, 공비가 3인 등비수열의 제3항은?", type: "abc", ans: "B", opts: ["12", "18", "24"] } 
+            ],
+            3: [
+                { q: "삼각함수 $y = 2\\sin x + 1$ 의 최댓값은?", type: "abc", ans: "C", opts: ["1", "2", "3"] }, 
+                { q: "로그방정식 $\\log_2 (x-1) = 3$ 의 해는 $x=9$ 이다.", type: "ox", ans: "O" },
+                { q: "$0 \\le x < 2\\pi$ 일 때, 삼각방정식 $\\cos x = 0$ 의 해의 개수는 2개이다.", type: "ox", ans: "O" },
+                { q: "수열의 귀납적 정의가 $a_1 = 1, a_{n+1} = a_n + 2$ 일 때, $a_5$ 의 값은?", type: "abc", ans: "B", opts: ["7", "9", "11"] }, 
+                { q: "첫째항이 1, 공비가 2인 등비수열의 첫째항부터 제5항까지의 합은 31이다.", type: "ox", ans: "O" }
+            ]
+        },
+        stats: {
+            1: [
+                { q: "주사위 한 개를 던질 때, 짝수의 눈이 나올 확률은 $\\frac{1}{2}$ 이다.", type: "ox", ans: "O" },
+                { q: "동전 2개를 동시에 던질 때, 일어날 수 있는 모든 경우의 수는?", type: "abc", ans: "B", opts: ["2", "4", "8"] }, 
+                { q: "어떤 사건이 절대로 일어나지 않을 확률은 0이다.", type: "ox", ans: "O" },
+                { q: "서로 다른 3명 중 반장 1명, 부반장 1명을 뽑는 경우의 수는?", type: "abc", ans: "B", opts: ["3", "6", "9"] }, 
+                { q: "1부터 10까지 자연수 중 3의 배수가 나올 확률은 $\\frac{3}{10}$ 이다.", type: "ox", ans: "O" }
+            ],
+            2: [
+                { q: "서로 다른 2개의 우체통에 3통의 편지를 넣는 중복순열의 경우의 수는?", type: "abc", ans: "B", opts: ["6", "8", "9"] }, 
+                { q: "두 사건 $A, B$ 가 서로 독립일 때, $P(A \\cap B) = P(A)P(B)$ 이다.", type: "ox", ans: "O" },
+                { q: "이항분포 $B(100, \\frac{1}{2})$ 를 따르는 확률변수의 기댓값은?", type: "abc", ans: "B", opts: ["25", "50", "100"] }, 
+                { q: "주사위 2개를 던질 때 두 눈의 합이 4일 확률은?", type: "abc", ans: "A", opts: ["$\\frac{1}{12}$", "$\\frac{1}{9}$", "$\\frac{1}{6}$"] }, 
+                { q: "확률변수 $X$에 대하여 $V(2X) = 2V(X)$ 이다.", type: "ox", ans: "X" }
+            ],
+            3: [
+                { q: "표준정규분포를 따르는 확률변수 $Z$ 의 평균은 0, 표준편차는 1이다.", type: "ox", ans: "O" },
+                { q: "$A, B$ 포함 5명이 일렬로 설 때 $A, B$가 이웃할 확률은?", type: "abc", ans: "A", opts: ["$\\frac{2}{5}$", "$\\frac{1}{2}$", "$\\frac{3}{5}$"] }, 
+                { q: "표본평균 $\\bar{X}$ 의 기댓값은 모평균 $m$ 과 같다.", type: "ox", ans: "O" },
+                { q: "표본의 크기를 4배로 늘리면 신뢰구간의 길이는 어떻게 되는가?", type: "abc", ans: "B", opts: ["$\\frac{L}{4}$", "$\\frac{L}{2}$", "$2L$"] }, 
+                { q: "남3, 여2 중 대표 2명을 뽑을 때 적어도 1명이 여학생일 확률은 $\\frac{7}{10}$ 이다.", type: "ox", ans: "O" }
+            ]
+        }
+    };
+
+    // 토핑 마스터 데이터
+    const allToppings = [
+        { id: "choco_shell", tier: 3, emoji: "🍫", name: "초코쉘" },
+        { id: "honey", tier: 3, emoji: "🍯", name: "벌집꿀" },
+        { id: "milk", tier: 3, emoji: "🥛", name: "연유" },
+        { id: "caramel", tier: 3, emoji: "🍮", name: "카라멜" },
+        { id: "brownie", tier: 2, emoji: "🥮", name: "브라우니" },
+        { id: "cheese", tier: 2, emoji: "🧀", name: "치즈큐브" },
+        { id: "pop", tier: 2, emoji: "🍬", name: "팝핑캔디" },
+        { id: "oreo", tier: 2, emoji: "🍩", name: "오레오" },
+        { id: "strawberry", tier: 1, emoji: "🍓", name: "딸기" },
+        { id: "banana", tier: 1, emoji: "🍌", name: "바나나" },
+        { id: "mango", tier: 1, emoji: "🥭", name: "망고" },
+        { id: "kiwi", tier: 1, emoji: "🥝", name: "키위" },
+        { id: "grapefruit", tier: 1, emoji: "🍊", name: "자몽" },
+        { id: "shine_muscat", tier: 1, emoji: "🍇", name: "샤인머스캣" }
+    ];
+
+    const syrupColors = {
+        'choco_shell': '#3E2723', 'honey': '#FBC02D', 'milk': '#FFF9C4', 'caramel': '#E65100'
+    };
+
+    let selectedSize = 'small';
+    let myToppings = []; 
+    let quizDeck = [];
+    let wrongQuestions = [];
+    let isRetryMode = false;
+    let currentQIndex = 0;
+    let correctCount = 0;
+
+    function switchScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active-screen'));
+        document.getElementById(id).classList.add('active-screen');
+    }
+
+    function goToLeaderboard() {
+        let scores = JSON.parse(localStorage.getItem('yoajung_scores') || '[]');
+        let ul = document.getElementById('ranking-list');
+        ul.innerHTML = '';
+        if (scores.length === 0) ul.innerHTML = '<li>저장된 기록이 없습니다!</li>';
+        else scores.forEach((s, i) => ul.innerHTML += `<li><span>${i + 1}위</span> <span style="color:#d81b60; font-weight:bold;">토핑 ${s}개</span></li>`);
+        switchScreen('screen-leaderboard');
+    }
+
+    function goToShop(size) {
+        selectedSize = size;
+        document.getElementById('yoajung-art').style.transform = size === 'large' ? "scale(1.2)" : "scale(1)";
+        switchScreen('screen-shop');
+    }
+
+    function toggleTopping(el) {
+        const id = el.dataset.id;
+        const tier = parseInt(el.dataset.tier);
+        const emoji = el.dataset.emoji;
+
+        if (el.classList.contains('selected')) {
+            el.classList.remove('selected');
+            myToppings = myToppings.filter(t => t.id !== id);
+        } else {
+            el.classList.add('selected');
+            myToppings.push({ id, tier, emoji });
+        }
+        document.getElementById('shop-counter').innerText = `선택한 토핑: ${myToppings.length}개`;
+        document.getElementById('btn-make').disabled = (myToppings.length < 6);
+    }
+
+    // --- 큰 수의 법칙 시뮬레이션 ---
+    let simCounts = {};
+    let simTotal = 0;
+
+    function startSimulation() {
+        selectedSize = 'small';
+        document.getElementById('yoajung-art').style.transform = "scale(1)";
+        switchScreen('screen-simulation');
+        
+        simCounts = {};
+        allToppings.forEach(t => simCounts[t.id] = 0);
+        simTotal = 0;
+        
+        document.getElementById('sim-result-area').style.display = 'none';
+        
+        // 막대그래프 UI 생성
+        const container = document.getElementById('sim-chart-container');
+        container.innerHTML = '';
+        allToppings.forEach(t => {
+            let row = document.createElement('div');
+            row.className = 'sim-row';
+            row.innerHTML = `
+                <div class="sim-label">${t.emoji} ${t.name}</div>
+                <div class="sim-bar-bg"><div id="bar-${t.id}" class="sim-bar-fill"></div></div>
+                <div id="pct-${t.id}" class="sim-percent">0%</div>
+            `;
+            container.appendChild(row);
+        });
+
+        runSimulation();
+    }
+
+    function runSimulation() {
+        let interval = setInterval(() => {
+            // 애니메이션 속도를 위해 프레임당 25번씩 뽑기 진행 (총 40프레임 = 약 1.5초 소요)
+            for(let i = 0; i < 25; i++) {
+                if (simTotal >= 1000) break;
+                let randomIdx = Math.floor(Math.random() * allToppings.length);
+                simCounts[allToppings[randomIdx].id]++;
+                simTotal++;
+            }
+            
+            document.getElementById('sim-counter').innerText = `시행 횟수: ${simTotal} / 1000`;
+            
+            allToppings.forEach(t => {
+                let pct = simTotal === 0 ? 0 : (simCounts[t.id] / simTotal) * 100;
+                document.getElementById(`bar-${t.id}`).style.width = (pct * 4) + '%'; // 시각화를 위해 너비 증폭
+                document.getElementById(`pct-${t.id}`).innerText = pct.toFixed(1) + '%';
+            });
+            
+            if (simTotal >= 1000) {
+                clearInterval(interval);
+                finishSimulation();
+            }
+        }, 40);
+    }
+
+    function finishSimulation() {
+        // 결과 정렬 (내림차순)
+        let sorted = [...allToppings].sort((a, b) => simCounts[b.id] - simCounts[a.id]);
+        let top6 = sorted.slice(0, 6);
+        
+        myToppings = top6.map(t => ({ id: t.id, tier: t.tier, emoji: t.emoji }));
+        
+        document.getElementById('sim-final-text').innerHTML = 
+            `선택된 6개: ${top6.map(t => t.emoji).join(' ')}<br>
+             <span style="font-size:16px; color:#666; font-weight:normal;">(가장 많이 뽑힌 상위 6개로 퀴즈를 세팅합니다)</span>`;
+        document.getElementById('sim-result-area').style.display = 'block';
+    }
+
+    // --- 퀴즈 페이즈 ---
+    function startQuizPhase() {
+        if(myToppings.length < 6) return; 
+        const totalQuestions = myToppings.length * 2;
+        const countAlg = Math.floor(totalQuestions / 2);
+        const countStat = totalQuestions - countAlg;
+
+        quizDeck = [...buildDeck('algebra', countAlg), ...buildDeck('stats', countStat)];
+        quizDeck.sort(() => Math.random() - 0.5); 
+        
+        currentQIndex = 0;
+        correctCount = 0;
+        wrongQuestions = [];
+        isRetryMode = false;
+        switchScreen('screen-quiz');
+        renderQuestion();
+    }
+
+    function startRetryPhase() {
+        quizDeck = [...wrongQuestions]; 
+        wrongQuestions = []; 
+        currentQIndex = 0;
+        isRetryMode = true; 
+        switchScreen('screen-quiz');
+        renderQuestion();
+    }
+
+    function buildDeck(category, needCount) {
+        let l1Count = Math.round(needCount * 0.4);
+        let l2Count = Math.round(needCount * 0.4);
+        let l3Count = needCount - l1Count - l2Count;
+
+        let pool1 = [...DB[category][1]];
+        let pool2 = [...DB[category][2]];
+        let pool3 = [...DB[category][3]];
+
+        let deck = [];
+        for(let i=0; i<l1Count; i++) { if(pool1.length > 0) deck.push(pool1.splice(Math.floor(Math.random()*pool1.length), 1)[0]); }
+        for(let i=0; i<l2Count; i++) { if(pool2.length > 0) deck.push(pool2.splice(Math.floor(Math.random()*pool2.length), 1)[0]); }
+        for(let i=0; i<l3Count; i++) { if(pool3.length > 0) deck.push(pool3.splice(Math.floor(Math.random()*pool3.length), 1)[0]); }
+
+        const allPool = [...pool1, ...pool2, ...pool3];
+        while(deck.length < needCount && allPool.length > 0) { deck.push(allPool.splice(Math.floor(Math.random()*allPool.length), 1)[0]); }
+        return deck;
+    }
+
+    function renderQuestion() {
+        if (currentQIndex >= quizDeck.length) {
+            if (isRetryMode) {
+                alert("오답 복습 완료! 다시 맞힌 문제들은 오답 노트에서 제외됩니다.");
+                switchScreen('screen-result');
+                document.getElementById('btn-retry').style.display = wrongQuestions.length > 0 ? 'inline-block' : 'none';
+            } else {
+                showResult();
+            }
+            return;
+        }
+
+        let prefix = isRetryMode ? "복습 문제" : "문제";
+        document.getElementById('progress-text').innerText = `${prefix} ${currentQIndex + 1} / ${quizDeck.length}`;
+        let q = quizDeck[currentQIndex];
+        document.getElementById("question-text").innerHTML = q.q;
+        
+        if (q.type === 'abc') {
+            document.getElementById("btn-a").innerHTML = "A. " + q.opts[0];
+            document.getElementById("btn-b").innerHTML = "B. " + q.opts[1];
+            document.getElementById("btn-c").innerHTML = "C. " + q.opts[2];
+        }
+
+        setTimeout(() => { if(window.MathJax) MathJax.typesetPromise([document.getElementById("quiz-box")]); }, 50);
+
+        if (q.type === "ox") {
+            document.getElementById("ox-buttons").style.display = "block";
+            document.getElementById("abc-buttons").style.display = "none";
+        } else {
+            document.getElementById("ox-buttons").style.display = "none";
+            document.getElementById("abc-buttons").style.display = "block";
+        }
+    }
+
+    function submitAnswer(ans) {
+        let q = quizDeck[currentQIndex];
+        if (ans === q.ans) { if (!isRetryMode) correctCount++; } 
+        else { wrongQuestions.push(q); }
+        currentQIndex++;
+        renderQuestion();
+    }
+
+    function addSyrupEffect(color) {
+        const layer = document.getElementById('syrup-layer');
+        let topBlob = document.createElement('div'); topBlob.className = 'syrup-blob'; topBlob.style.cssText = `width:105px; height:55px; background:${color}; border-radius:50px; bottom:165px; left:98px;`; layer.appendChild(topBlob);
+        let midBlob = document.createElement('div'); midBlob.className = 'syrup-blob'; midBlob.style.cssText = `width:155px; height:65px; background:${color}; border-radius:80px; bottom:122px; left:72px; animation-delay: 0.2s;`; layer.appendChild(midBlob);
+
+        for(let i=0; i<7; i++) {
+            let drip = document.createElement('div');
+            let dLeft = 70 + Math.random() * 150; let dTop = 90 + Math.random() * 40; let dHeight = 30 + Math.random() * 60; let delay = 0.3 + Math.random() * 0.5;
+            drip.className = 'syrup-drip'; drip.style.cssText = `background:${color}; left:${dLeft}px; top:${dTop}px; animation-delay: ${delay}s;`;
+            drip.style.setProperty('--drip-h', dHeight + 'px'); layer.appendChild(drip);
+        }
+    }
+
+    function showResult() {
+        switchScreen('screen-result');
+        const earnedCount = Math.floor(correctCount / 2);
+        
+        document.getElementById('btn-retry').style.display = wrongQuestions.length > 0 ? 'inline-block' : 'none';
+
+        let scores = JSON.parse(localStorage.getItem('yoajung_scores') || '[]');
+        scores.push(earnedCount); scores.sort((a, b) => b - a); scores = scores.slice(0, 10); 
+        localStorage.setItem('yoajung_scores', JSON.stringify(scores));
+        
+        myToppings.sort((a, b) => a.tier - b.tier);
+        const earnedToppings = myToppings.slice(0, earnedCount);
+        const emojiList = earnedToppings.map(t => t.emoji).join(' ');
+
+        let summaryText = `총 ${quizDeck.length}문제 중 <span style="color:#d81b60;">${correctCount}문제</span>를 맞혀,<br><b>토핑 ${earnedCount}개</b>를 획득했습니다!<br><br>`;
+        if(earnedCount > 0) summaryText += `획득한 토핑: ${emojiList}`; else summaryText += "앗, 토핑을 하나도 얻지 못했어요 😭";
+        document.getElementById('result-summary').innerHTML = summaryText;
+
+        const layer = document.getElementById('topping-layer'); layer.innerHTML = ''; 
+        const syrupLayer = document.getElementById('syrup-layer'); syrupLayer.innerHTML = ''; 
+        
+        const neatPositions = [
+            { l: 110, b: 200 }, { l: 80, b: 170 }, { l: 140, b: 170 }, { l: 60, b: 130 }, { l: 110, b: 135 }, { l: 170, b: 130 },
+            { l: 90, b: 100 }, { l: 140, b: 100 }, { l: 180, b: 160 }, { l: 50, b: 160 }, { l: 120, b: 220 }, { l: 100, b: 150 }
+        ];
+
+        earnedToppings.forEach((t, i) => {
+            setTimeout(() => {
+                if (syrupColors[t.id]) addSyrupEffect(syrupColors[t.id]);
+                let div = document.createElement('div'); div.className = 'topping-drop'; div.innerText = t.emoji;
+                let pos = neatPositions[i % neatPositions.length];
+                div.style.left = pos.l + 'px'; div.style.bottom = pos.b + 'px'; layer.appendChild(div);
+            }, i * 300);
+        });
+    }
+</script>
+
+</body>
+</html>
